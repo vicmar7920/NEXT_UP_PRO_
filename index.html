@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next Up Pro - Tablero de Estudio Dinámico</title>
+    <!-- Librería html2canvas optimizada -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-dark: #0369a1;
+            --bg: #090d16;
+            --card-bg: #111827;
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #38bdf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border: #1f2937;
+            --gold: #f59e0b;
+        }
+
+        /* TEMAS DE COLOR GLOBALES */
+        body.theme-original { --bg: #090d16; --card-bg: #111827; --text: #f3f4f6; --text-muted: #9ca3af; --border: #1f2937; --primary: #0284c7; --accent: #38bdf8; }
+        body.theme-black { --bg: #000000; --card-bg: #121212; --text: #ffffff; --text-muted: #a1a1aa; --border: #27272a; --primary: #3b82f6; --accent: #60a5fa; }
+        body.theme-white { --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; --text-muted: #64748b; --border: #cbd5e1; --primary: #0284c7; --accent: #0284c7; }
+        body.theme-pink { --bg: #fff1f2; --card-bg: #ffe4e6; --text: #881337; --text-muted: #9f1239; --border: #fecdd3; --primary: #e11d48; --accent: #f43f5e; }
+        body.theme-skyblue { --bg: #f0fdf4; --card-bg: #e0f2fe; --text: #0c4a6e; --text-muted: #0369a1; --border: #bae6fd; --primary: #0284c7; --accent: #38bdf8; }
+        body.theme-purple { --bg: #fdf4ff; --card-bg: #fae8ff; --text: #581c87; --text-muted: #7e22ce; --border: #f5d0fe; --primary: #9333ea; --accent: #a855f7; }
+        body.theme-gray { --bg: #f3f4f6; --card-bg: #e5e7eb; --text: #1f2937; --text-muted: #4b5563; --border: #d1d5db; --primary: #4b5563; --accent: #6b7280; }
+        body.theme-green { --bg: #f0fdf4; --card-bg: #dcfce7; --text: #064e3b; --text-muted: #047857; --border: #bbf7d0; --primary: #059669; --accent: #10b981; }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
+        body { background-color: var(--bg); color: var(--text); line-height: 1.6; padding: 20px; transition: background 0.3s, color 0.3s; }
+
+        header { 
+            text-align: center; 
+            margin-bottom: 25px; 
+            padding: 25px; 
+            background: var(--card-bg); 
+            border-radius: 14px; 
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .streak-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        .coins-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .coins-badge:hover { transform: scale(1.05); }
+
+        #coin-toast {
+            display: none;
+            position: fixed;
+            top: 25px;
+            right: 50%;
+            transform: translateX(50%);
+            background: var(--gold);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        header h1 { color: var(--accent); font-size: 2rem; margin-bottom: 5px; }
+        header p { color: var(--text-muted); font-size: 0.95rem; font-style: italic; }
+
+        .nav-tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 25px; flex-wrap: wrap; }
+        .tab-btn { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .tab-btn.active, .tab-btn:hover { background: var(--primary); border-color: var(--primary); color: white; }
+
+        .section { display: none; background: var(--card-bg); padding: 25px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 20px; }
+        .section.active { display: block; }
+
+        h2 { color: var(--accent); margin-bottom: 15px; font-size: 1.4rem; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+
+        .block-creator {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: var(--bg);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        input, select, textarea {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            width: 100%;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .btn:hover { background: var(--primary-dark); }
+
+        .blocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .subject-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, border-color 0.2s;
+            position: relative;
+        }
+        .subject-card:hover { border-color: var(--accent); }
+        .subject-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .subject-title-area { display: flex; align-items: center; gap: 10px; cursor: pointer; flex-grow: 1; }
+        .subject-title { font-size: 1.2rem; color: var(--accent); font-weight: bold; }
+        .subject-info { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; }
+        
+        .priority-controls { display: flex; gap: 5px; }
+
+        .block-detail-view { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .back-btn { background: #374151; margin-bottom: 15px; padding: 6px 14px; font-size: 0.85rem; }
+
+        /* STICKERS CON MOVIMIENTO REAL */
+        .animated-sticker { font-size: 2.2rem; display: inline-block; }
+        .sticker-heart { animation: heartbeat 1.2s infinite ease-in-out; }
+        .sticker-neuron { animation: pulseGlow 2s infinite alternate; }
+        .sticker-fire { animation: flicker 1s infinite alternate; }
+        .sticker-gear { animation: spinGear 4s linear infinite; }
+        .sticker-dog { animation: bounceSlow 1.5s infinite ease-in-out; }
+        .sticker-star { animation: twinkle 1.5s infinite alternate; }
+
+        @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        @keyframes pulseGlow { 0% { transform: scale(1); filter: drop-shadow(0 0 2px var(--accent)); } 100% { transform: scale(1.1); filter: drop-shadow(0 0 8px var(--accent)); } }
+        @keyframes flicker { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-3px) scale(1.1); } }
+        @keyframes spinGear { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes bounceSlow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        @keyframes twinkle { 0% { opacity: 0.6; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1.15); } }
+
+        .kanban-subgrid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        @media(max-width: 900px) { .kanban-subgrid { grid-template-columns: 1fr; } }
+        .kanban-col {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+        }
+        .kanban-col h4 { font-size: 0.95rem; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+        .task-list { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
+        
+        .task-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.9rem;
+        }
+        .task-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            padding-top: 4px;
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+        }
+        .task-actions { display: flex; gap: 4px; }
+        .action-btn { background: var(--border); border: none; color: var(--text); padding: 3px 6px; border-radius: 4px; cursor: pointer; }
+        .action-btn:hover { background: var(--primary); }
+
+        /* TIENDA DE 150+ EMOJIS */
+        .category-title { color: var(--gold); margin: 25px 0 10px; font-size: 1.1rem; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 10px;
+        }
+        .shop-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        /* HERRAMIENTAS: NOTAS Y POST-ITS */
+        .tool-box { background: var(--bg); border: 1px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .quick-notes { width: 100%; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 12px; resize: vertical; min-height: 180px; font-size: 0.95rem; }
+        
+        .postits-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+        .postit-card {
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            position: relative;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .postit-textarea {
+            background: transparent;
+            border: none;
+            width: 100%;
+            resize: vertical;
+            font-size: 0.9rem;
+            outline: none;
+            font-family: inherit;
+            min-height: 80px;
+        }
+        .postit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        /* PIZARRA PRO MÓVIL Y AVANZADA */
+        .whiteboard-container {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            position: relative;
+        }
+        .whiteboard-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .wb-btn {
+            background: var(--border);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .wb-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        .wb-canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 650px;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden; 
+            touch-action: none;
+        }
+        canvas {
+            background: transparent;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        
+        /* CAJAS DE TEXTO Y TÍTULOS FLOTANTES */
+        .movable-textbox {
+            position: absolute;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 20;
+            display: inline-flex;
+            flex-direction: column;
+            overflow: hidden;
+            resize: both;
+            min-width: 130px;
+            min-height: 50px;
+        }
+        
+        .tb-drag-handle {
+            display: none;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            cursor: move;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            color: inherit;
+        }
+        .movable-textbox.active-box .tb-drag-handle {
+            display: flex;
+        }
+
+        .tb-body-area {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex-grow: 1;
+        }
+        .movable-textbox .tb-content {
+            outline: none;
+            white-space: pre-wrap;
+            word-break: break-word;
+            user-select: text;
+            -webkit-user-select: text;
+            height: 100%;
+        }
+
+        .tb-footer {
+            display: none;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 6px;
+            font-size: 0.7rem;
+            margin-top: 4px;
+            border-top: 1px dashed rgba(0,0,0,0.15);
+            padding-top: 4px;
+            align-items: center;
+        }
+        .movable-textbox.active-box .tb-footer {
+            display: flex;
+        }
+        .movable-textbox button, .movable-textbox select {
+            background: rgba(0,0,0,0.15);
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+        .movable-textbox button:hover, .movable-textbox select:hover { background: rgba(0,0,0,0.3); }
+
+        /* STICKERS FLOTANTES EN LA PIZARRA */
+        .canvas-sticker-item {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            display: inline-block;
+            padding: 5px;
+            z-index: 10;
+        }
+        .sticker-controls-bar {
+            display: none;
+            font-size: 0.6rem;
+            gap: 2px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px;
+            border-radius: 4px;
+            position: absolute;
+            top: -22px;
+            left: 0;
+            white-space: nowrap;
+        }
+        .canvas-sticker-item.active-sticker .sticker-controls-bar {
+            display: flex;
+        }
+
+        /* REGLA FLOTANTE */
+        .ruler-tool {
+            position: absolute;
+            width: 300px;
+            height: 40px;
+            background: rgba(245, 158, 11, 0.25);
+            border: 2px dashed var(--gold);
+            border-radius: 6px;
+            cursor: move;
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: var(--gold);
+            backdrop-filter: blur(2px);
+        }
+
+        /* GALERÍA DE HOJAS GUARDADAS */
+        .saved-sheets-section {
+            margin-top: 20px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .sheets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .sheet-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .sheet-card img {
+            width: 100%;
+            height: 120px;
+            object-fit: contain;
+            background: #fff;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+        }
+
+        /* CONFIGURACIÓN Y CUENTA */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media(max-width: 768px) { .settings-grid { grid-template-columns: 1fr; } }
+        .theme-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .theme-pill {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+            background: var(--card-bg);
+            color: var(--text);
+            transition: 0.2s;
+        }
+        .theme-pill:hover { border-color: var(--primary); }
+    </style>
+</head>
+<body class="theme-original">
+
+    <div id="coin-toast">💡 ¡Completa tus tareas para generar monedas y desbloquear stickers!</div>
+
+    <header>
+        <div class="streak-badge">⚡ Racha: <span id="user-streak">1</span> días</div>
+        <div class="coins-badge" onclick="toggleCoinMessage()" title="Haz clic para ver cómo ganar monedas">🪙 <span id="user-coins">15</span> Monedas</div>
+        <h1>Next Up Pro</h1>
+        <p>“Organiza tus bloques, prioriza materias y diseña con stickers animados por ID.”</p>
+    </header>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('board')">📋 Mis Bloques</button>
+        <button class="tab-btn" onclick="switchTab('shop')">🛒 Tienda Mega (150+ Emojis)</button>
+        <button class="tab-btn" onclick="switchTab('notes')">🛠️ Notas</button>
+        <button class="tab-btn" onclick="switchTab('whiteboard')">🎨 Pizarra Cuaderno</button>
+        <button class="tab-btn" onclick="switchTab('settings')">⚙️ Cuenta & Tema</button>
+    </div>
+
+    <!-- SECCIÓN 1: TABLEROS Y BLOQUES -->
+    <div id="board" class="section active">
+        <div id="main-view">
+            <h2>Crear Nueva Materia / Bloque</h2>
+            <div class="block-creator">
+                <input type="text" id="new-block-name" placeholder="Ej: Bioquímica, Fisiología, Historia...">
+                <button class="btn" onclick="addStudyBlock()">➕ Crear Bloque</button>
+            </div>
+
+            <h2>Tus Bloques de Estudio (Usa las flechas para priorizar)</h2>
+            <div class="blocks-grid" id="blocks-grid-container"></div>
+        </div>
+
+        <div id="detail-view" style="display: none;"></div>
+    </div>
+
+    <!-- SECCIÓN 2: TIENDA MEGA (150+ EMOJIS ANIMADOS) -->
+    <div id="shop" class="section">
+        <h2>🛒 Tienda Mega con más de 150 Emojis y Stickers Animados</h2>
+        <p style="margin-bottom: 15px; color: var(--text-muted); font-size: 0.9rem;">Explora las categorías, colecciona y usa sus números ID en tus materias.</p>
+        <div id="shop-categories-container"></div>
+    </div>
+
+    <!-- SECCIÓN 3: NOTAS Y POST-ITS -->
+    <div id="notes" class="section">
+        <h2>Herramientas de Notas</h2>
+        <div class="tool-box" style="margin-bottom: 20px;">
+            <h3>📝 Bloc de Notas Automático</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">Tus apuntes generales se guardan solos.</p>
+            <textarea id="quick-notes" class="quick-notes" placeholder="Escribe tus apuntes rápidos aquí..." oninput="saveNotes()"></textarea>
+        </div>
+
+        <div class="tool-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3>📌 Notas Rápidas Adhesivas (Post-its con Colores)</h3>
+                <button class="btn" style="padding: 6px 12px; font-size: 0.85rem;" onclick="addPostIt()">➕ Nueva Nota Adhesiva</button>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">Cambia el color de cada nota; el texto se adaptará automáticamente para que se vea claro.</p>
+            <div class="postits-container" id="postits-container"></div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 4: PIZARRA PRO AVANZADA -->
+    <div id="whiteboard" class="section">
+        <h2>Pizarra Cuaderno Profesional (Esquemas & Sinópticos)</h2>
+        <div class="whiteboard-container">
+            <div class="whiteboard-toolbar">
+                <span style="font-size: 0.8rem; font-weight: bold; color: var(--accent);">Herramienta:</span>
+                <button class="wb-btn active" id="tool-pencil" onclick="setWbTool('pencil')">✏️ Lápiz</button>
+                <button class="wb-btn" id="tool-pen" onclick="setWbTool('pen')">✒️ Lapicero</button>
+                <button class="wb-btn" id="tool-marker" onclick="setWbTool('marker')">🖍️ Marcador</button>
+                <button class="wb-btn" id="tool-highlighter" onclick="setWbTool('highlighter')">✨ Resaltador</button>
+                <button class="wb-btn" id="tool-eraser" onclick="setWbTool('eraser')">🧹 Borrador</button>
+                
+                <select id="shape-selector" class="wb-btn" onchange="setWbTool('shape')" style="background: var(--card-bg);">
+                    <option value="rect">🟫 Formas: Cuadro</option>
+                    <option value="circle">⭕ Formas: Círculo</option>
+                    <option value="line">📏 Formas: Línea</option>
+                    <option value="arrow">➡️ Formas: Flecha</option>
+                </select>
+
+                <button class="wb-btn" id="tool-text" onclick="setWbTool('text')">📦 Caja Texto</button>
+                <button class="wb-btn" onclick="addTitleTextbox()" style="background: var(--accent); border-color: var(--accent); color: #000;" title="Cuadro sin fondo ni borde para títulos">✨ Títulos</button>
+                <button class="wb-btn" onclick="addStickerToBoard()" style="background: var(--warning); border-color: var(--warning); color: #000;">🐾 Sticker</button>
+                <button class="wb-btn" onclick="addRuler()" style="background: var(--gold); border-color: var(--gold); color: #000;" title="Regla para trazos rectos">📐 Regla</button>
+
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <span style="font-size: 0.75rem;">Grosor:</span>
+                    <select id="stroke-width" class="wb-btn" style="background: var(--card-bg); padding: 4px;">
+                        <option value="2">Fino</option>
+                        <option value="4" selected>Medio</option>
+                        <option value="8">Grueso</option>
+                        <option value="16">Muy Grueso</option>
+                    </select>
+                </div>
+
+                <button class="wb-btn" onclick="undoLastAction()" title="Deshacer último trazo o acción">↩️ Deshacer</button>
+                <button class="wb-btn" onclick="redoLastAction()" title="Rehacer">🔄 Rehacer</button>
+
+                <!-- COLOR DE HOJA APARTE -->
+                <div style="display: flex; align-items: center; gap: 4px;" title="Color de Fondo de la Hoja">
+                    <span style="font-size: 0.75rem; font-weight: bold;">Fondo Hoja:</span>
+                    <input type="color" id="sheet-bg-color" value="#ffffff" style="width: 28px; height: 26px; border: none; cursor: pointer; background: transparent;" onchange="changeSheetBackground()">
+                </div>
+
+                <!-- PATRÓN TIPO CUADERNO REAL -->
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <span style="font-size: 0.75rem; font-weight: bold;">Base:</span>
+                    <select id="sheet-pattern" class="wb-btn" style="background: var(--card-bg); padding: 4px;" onchange="changeSheetPattern()">
+                        <option value="clean">Limpia</option>
+                        <option value="grid">Hoja Cuadriculada (Cuaderno)</option>
+                        <option value="lines">Hoja con Líneas (Rayas)</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.75rem; font-weight: bold;">Tinta:</span>
+                    <input type="color" id="wb-color" value="#0284c7" style="width: 28px; height: 26px; border: none; cursor: pointer; background: transparent;">
+                    
+                    <span style="font-size: 0.75rem; font-weight: bold;">Relleno Forma:</span>
+                    <input type="color" id="wb-bg-color" value="#e0f2fe" style="width: 28px; height: 26px; border: none; cursor: pointer; background: transparent;">
+                </div>
+
+                <button class="wb-btn" style="background: var(--success); border-color: var(--success); color: white;" onclick="saveSheetToGallery()">💾 Guardar Hoja</button>
+                <button class="wb-btn" style="background: var(--error); border-color: var(--error); color: white;" onclick="clearCanvas()">🗑️ Limpiar</button>
+            </div>
+            
+            <div class="wb-canvas-wrapper" id="canvas-area">
+                <canvas id="drawing-canvas"></canvas>
+            </div>
+
+            <!-- GALERÍA DE HOJAS GUARDADAS -->
+            <div class="saved-sheets-section">
+                <h3>🖼️ Tus Hojas Guardadas (Galería y Códigos de Descarga)</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">Descarga tus esquemas sinópticos y mapas conceptuales al instante.</p>
+                <div class="sheets-grid" id="saved-sheets-container">
+                    <p style="color: var(--text-muted); font-size: 0.85rem;" id="no-sheets-msg">No hay hojas guardadas todavía. ¡Haz clic en "Guardar Hoja" para conservar tu avance!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 5: CONFIGURACIÓN, TEMAS Y CUENTA -->
+    <div id="settings" class="section">
+        <h2>⚙️ Cuenta, Respaldo y Personalización</h2>
+        <div class="settings-grid">
+            <div class="tool-box">
+                <h3>🎨 Personalización de Color Global</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Elige el tema estético para toda la aplicación:</p>
+                <div class="theme-selector">
+                    <button class="theme-pill" onclick="setTheme('theme-original')">🌌 Original (Predeterminado)</button>
+                    <button class="theme-pill" onclick="setTheme('theme-skyblue')">🌊 Azul Cielo</button>
+                    <button class="theme-pill" onclick="setTheme('theme-white')">☁️ Blanco Clásico</button>
+                    <button class="theme-pill" onclick="setTheme('theme-black')">🌙 Negro Oscuro</button>
+                    <button class="theme-pill" onclick="setTheme('theme-pink')">🌸 Rosa</button>
+                    <button class="theme-pill" onclick="setTheme('theme-purple')">🔮 Morado</button>
+                    <button class="theme-pill" onclick="setTheme('theme-green')">🌿 Verde</button>
+                    <button class="theme-pill" onclick="setTheme('theme-gray')">🪙 Gris</button>
+                </div>
+            </div>
+
+            <div class="tool-box">
+                <h3>🔑 Tu Código Único de Cuenta (Respaldo)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">Copia tu código o ingrésalo para restaurar tu progreso en otro dispositivo:</p>
+                <textarea id="account-code-box" class="quick-notes" style="min-height: 80px; font-size: 0.8rem;" readonly></textarea>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn" style="padding: 6px 12px; font-size: 0.8rem;" onclick="copyAccountCode()">📋 Copiar Código</button>
+                    <button class="btn" style="padding: 6px 12px; font-size: 0.8rem; background: #374151;" onclick="importAccountCode()">📥 Importar Código</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userCoins = parseInt(localStorage.getItem('nextup_coins')) || 15;
+        let userStreak = parseInt(localStorage.getItem('nextup_streak')) || 1;
+        let currentTheme = localStorage.getItem('nextup_theme') || 'theme-original';
+        document.body.className = currentTheme;
+        
+        let defaultBlocks = [
+            { 
+                id: 999, 
+                name: '🌟 ¡Bienvenido a Next Up Pro! (Guía)', 
+                sticker: 'sticker-heart', 
+                stickerId: '101', 
+                isGuide: true,
+                tasks: [
+                    { id: 9991, title: '👋 ¡Todo 100% gratuito! Gana monedas completando tus tareas y pasándolas a "Dominado".', status: 'todo' },
+                    { id: 9992, title: '🛒 Tienda Mega: Más de 150 emojis y stickers con animaciones reales (latidos, brillo, giro).', status: 'todo' },
+                    { id: 9993, title: '🎨 Cajas con Colores Separados: Modifica el fondo, borde y color de letra independientemente.', status: 'todo' },
+                    { id: 9994, title: '✨ Títulos y Cuaderno: Añade títulos limpios y transforma tu pizarra en una auténtica hoja de cuaderno escolar.', status: 'todo' }
+                ] 
+            },
+            { 
+                id: 1, 
+                name: 'Anatomía', 
+                sticker: 'sticker-heart', 
+                stickerId: '101', 
+                tasks: [
+                    { id: 101, title: 'Repasar Sistema Nervioso', status: 'todo' }
+                ]
+            }
+        ];
+
+        let blocks = JSON.parse(localStorage.getItem('nextup_blocks'));
+        if (!blocks || blocks.length === 0) blocks = defaultBlocks;
+
+        let unlockedStickers = JSON.parse(localStorage.getItem('nextup_unlocked')) || ['101', '001', '301'];
+        let activeBlockId = null;
+
+        let lastLogin = localStorage.getItem('nextup_lastlogin');
+        let todayStr = new Date().toDateString();
+        if (lastLogin !== todayStr) {
+            userStreak += 1;
+            localStorage.setItem('nextup_lastlogin', todayStr);
+        }
+
+        let savedSheets = JSON.parse(localStorage.getItem('nextup_sheets')) || [];
+
+        let toastTimer = null;
+        function toggleCoinMessage() {
+            let toast = document.getElementById('coin-toast');
+            if (toast.style.display === 'block') {
+                toast.style.display = 'none';
+                clearTimeout(toastTimer);
+            } else {
+                toast.style.display = 'block';
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+            }
+        }
+
+        // --- TIENDA MEGA CON MÁS DE 150 EMOJIS Y STICKERS ANIMADOS ---
+        const stickerCategories = [
+            {
+                category: '🔥 Emociones, Caritas & Expresiones Animadas (22 items)',
+                items: [
+                    { id: '001', css: 'sticker-dog', icon: '😁', name: 'Risa', cost: 6 },
+                    { id: '002', css: 'sticker-dog', icon: '😂', name: 'Llanto Risa', cost: 6 },
+                    { id: '003', css: 'sticker-heart', icon: '🥰', name: 'Enamorado', cost: 8 },
+                    { id: '004', css: 'sticker-star', icon: '😎', name: 'Cool', cost: 8 },
+                    { id: '005', css: 'sticker-dog', icon: '🥳', name: 'Fiesta', cost: 10 },
+                    { id: '006', css: 'sticker-star', icon: '🤩', name: 'Estrellas', cost: 10 },
+                    { id: '007', css: 'sticker-dog', icon: '🤓', name: 'Nerd', cost: 8 },
+                    { id: '008', css: 'sticker-dog', icon: '🤔', name: 'Pensativo', cost: 6 },
+                    { id: '009', css: 'sticker-fire', icon: '🔥', name: 'Fuego', cost: 10 },
+                    { id: '010', css: 'sticker-star', icon: '💫', name: 'Destello', cost: 8 },
+                    { id: '011', css: 'sticker-dog', icon: '🤪', name: 'Loco', cost: 6 },
+                    { id: '012', css: 'sticker-dog', icon: '😇', name: 'Ángel', cost: 8 },
+                    { id: '013', css: 'sticker-dog', icon: '🤠', name: 'Vaquero', cost: 8 },
+                    { id: '014', css: 'sticker-dog', icon: '👻', name: 'Fantasma', cost: 10 },
+                    { id: '015', css: 'sticker-dog', icon: '🤖', name: 'Robot', cost: 10 },
+                    { id: '016', css: 'sticker-dog', icon: '👽', name: 'Alien', cost: 10 },
+                    { id: '017', css: 'sticker-dog', icon: '😺', name: 'Gato Feliz', cost: 8 },
+                    { id: '018', css: 'sticker-dog', icon: '😻', name: 'Gato Corazón', cost: 10 },
+                    { id: '019', css: 'sticker-dog', icon: '😽', name: 'Gato Beso', cost: 8 },
+                    { id: '020', css: 'sticker-dog', icon: '💪', name: 'Fuerza', cost: 8 },
+                    { id: '021', css: 'sticker-star', icon: '👏', name: 'Aplauso', cost: 8 },
+                    { id: '022', css: 'sticker-star', icon: '🙌', name: 'Manos Arriba', cost: 8 }
+                ]
+            },
+            {
+                category: '🫀 Anatomía, Medicina & Ciencia Pro (22 items)',
+                items: [
+                    { id: '101', css: 'sticker-heart', icon: '🫀', name: 'Corazón Real', cost: 12 },
+                    { id: '102', css: 'sticker-heart', icon: '❤️', name: 'Rojo', cost: 10 },
+                    { id: '103', css: 'sticker-neuron', icon: '🧠', name: 'Cerebro', cost: 15 },
+                    { id: '104', css: 'sticker-gear', icon: '🦴', name: 'Hueso', cost: 12 },
+                    { id: '105', css: 'sticker-gear', icon: '🫁', name: 'Pulmones', cost: 14 },
+                    { id: '106', css: 'sticker-gear', icon: '🦷', name: 'Muela', cost: 10 },
+                    { id: '107', css: 'sticker-gear', icon: '👁️', name: 'Ojo', cost: 10 },
+                    { id: '108', css: 'sticker-gear', icon: '🔬', name: 'Microscopio', cost: 15 },
+                    { id: '109', css: 'sticker-gear', icon: '🧬', name: 'ADN', cost: 15 },
+                    { id: '110', css: 'sticker-gear', icon: '💊', name: 'Pastilla', cost: 8 },
+                    { id: '111', css: 'sticker-gear', icon: '💉', name: 'Jeringa', cost: 10 },
+                    { id: '112', css: 'sticker-gear', icon: '🩺', name: 'Estetoscopio', cost: 14 },
+                    { id: '113', css: 'sticker-gear', icon: '🧪', name: 'Tubo Ensayo', cost: 10 },
+                    { id: '114', css: 'sticker-gear', icon: '🧫', name: 'Placa Petri', cost: 12 },
+                    { id: '115', css: 'sticker-gear', icon: '🩹', name: 'Curita', cost: 8 },
+                    { id: '116', css: 'sticker-gear', icon: '🧬', name: 'Genética', cost: 14 },
+                    { id: '117', css: 'sticker-gear', icon: '⚖️', name: 'Balanza', cost: 10 },
+                    { id: '118', css: 'sticker-gear', icon: '🌡️', name: 'Termómetro', cost: 10 },
+                    { id: '119', css: 'sticker-gear', icon: '⚡', name: 'Neurona Rayo', cost: 14 },
+                    { id: '120', css: 'sticker-heart', icon: '💖', name: 'Corazón Brillo', cost: 12 },
+                    { id: '121', css: 'sticker-heart', icon: '💓', name: 'Latido', cost: 12 },
+                    { id: '122', css: 'sticker-heart', icon: '💞', name: 'Corazones', cost: 12 }
+                ]
+            },
+            {
+                category: '📚 Estudio, Arte & Universidad (22 items)',
+                items: [
+                    { id: '201', css: 'sticker-star', icon: '📖', name: 'Libro Abierto', cost: 10 },
+                    { id: '202', css: 'sticker-star', icon: '📚', name: 'Pila Libros', cost: 12 },
+                    { id: '203', css: 'sticker-star', icon: '✏️', name: 'Lápiz', cost: 8 },
+                    { id: '204', css: 'sticker-star', icon: '✒️', name: 'Pluma', cost: 10 },
+                    { id: '205', css: 'sticker-star', icon: '🎨', name: 'Paleta', cost: 12 },
+                    { id: '206', css: 'sticker-star', icon: '📐', name: 'Escuadra', cost: 8 },
+                    { id: '207', css: 'sticker-star', icon: '📌', name: 'Pin', cost: 6 },
+                    { id: '208', css: 'sticker-star', icon: '📝', name: 'Bloc Notas', cost: 10 },
+                    { id: '209', css: 'sticker-star', icon: '💡', name: 'Idea', cost: 10 },
+                    { id: '210', css: 'sticker-star', icon: '🎓', name: 'Birrete', cost: 15 },
+                    { id: '211', css: 'sticker-star', icon: '🎒', name: 'Mochila', cost: 10 },
+                    { id: '212', css: 'sticker-star', icon: '📋', name: 'Portapapeles', cost: 10 },
+                    { id: '213', css: 'sticker-star', icon: '📁', name: 'Carpeta', cost: 8 },
+                    { id: '214', css: 'sticker-star', icon: '📂', name: 'Carpeta Abierta', cost: 8 },
+                    { id: '215', css: 'sticker-star', icon: '📊', name: 'Gráfica', cost: 10 },
+                    { id: '216', css: 'sticker-star', icon: '📈', name: 'Tendencia Alza', cost: 10 },
+                    { id: '217', css: 'sticker-star', icon: '🔍', name: 'Lupa', cost: 8 },
+                    { id: '218', css: 'sticker-star', icon: '🗂️', name: 'Archivador', cost: 10 },
+                    { id: '219', css: 'sticker-star', icon: '✒️', name: 'Firma', cost: 10 },
+                    { id: '220', css: 'sticker-star', icon: '🖊️', name: 'Bolígrafo', cost: 8 },
+                    { id: '221', css: 'sticker-star', icon: '✂️', name: 'Tijeras', cost: 8 },
+                    { id: '222', css: 'sticker-star', icon: '📌', name: 'Chincheta', cost: 6 }
+                ]
+            },
+            {
+                category: '🐾 Animales & Mascotas de Colección (22 items)',
+                items: [
+                    { id: '301', css: 'sticker-dog', icon: '🐶', name: 'Perrito', cost: 12 },
+                    { id: '302', css: 'sticker-dog', icon: '🐱', name: 'Gatito', cost: 12 },
+                    { id: '303', css: 'sticker-dog', icon: '🦊', name: 'Zorrito', cost: 14 },
+                    { id: '304', css: 'sticker-dog', icon: '🐼', name: 'Panda', cost: 14 },
+                    { id: '305', css: 'sticker-dog', icon: '🐨', name: 'Koala', cost: 14 },
+                    { id: '306', css: 'sticker-dog', icon: '🐰', name: 'Conejo', cost: 12 },
+                    { id: '307', css: 'sticker-dog', icon: '🦁', name: 'León', cost: 15 },
+                    { id: '308', css: 'sticker-dog', icon: '🐯', name: 'Tigre', cost: 15 },
+                    { id: '309', css: 'sticker-dog', icon: '🦄', name: 'Unicornio', cost: 18 },
+                    { id: '310', css: 'sticker-dog', icon: '🦖', name: 'Dino', cost: 15 },
+                    { id: '311', css: 'sticker-dog', icon: '🐬', name: 'Delfín', cost: 14 },
+                    { id: '312', css: 'sticker-dog', icon: '🦉', name: 'Búho', cost: 12 },
+                    { id: '313', css: 'sticker-dog', icon: '🐸', name: 'Rana', cost: 10 },
+                    { id: '314', css: 'sticker-dog', icon: '🐵', name: 'Mono', cost: 10 },
+                    { id: '315', css: 'sticker-dog', icon: '🐧', name: 'Pingüino', cost: 12 },
+                    { id: '316', css: 'sticker-dog', icon: '🐢', name: 'Tortuga', cost: 10 },
+                    { id: '317', css: 'sticker-dog', icon: '🦋', name: 'Mariposa', cost: 10 },
+                    { id: '318', css: 'sticker-dog', icon: '🐝', name: 'Abeja', cost: 10 },
+                    { id: '319', css: 'sticker-dog', icon: '🐞', name: 'Mariquita', cost: 10 },
+                    { id: '320', css: 'sticker-dog', icon: '🐳', name: 'Ballena', cost: 14 },
+                    { id: '321', css: 'sticker-dog', icon: '🐙', name: 'Pulpo', cost: 12 },
+                    { id: '322', css: 'sticker-dog', icon: '🦀', name: 'Cangrejo', cost: 10 }
+                ]
+            },
+            {
+                category: '👑 Coronas, Premios & Destellos VIP (22 items)',
+                items: [
+                    { id: '401', css: 'sticker-star', icon: '👑', name: 'Corona', cost: 20 },
+                    { id: '402', css: 'sticker-star', icon: '💎', name: 'Diamante', cost: 18 },
+                    { id: '403', css: 'sticker-star', icon: '🏆', name: 'Trofeo', cost: 15 },
+                    { id: '404', css: 'sticker-star', icon: '🥇', name: 'Medalla', cost: 12 },
+                    { id: '405', css: 'sticker-star', icon: '⭐', name: 'Estrella Oro', cost: 10 },
+                    { id: '406', css: 'sticker-star', icon: '🌟', name: 'Estrella Brillo', cost: 10 },
+                    { id: '407', css: 'sticker-star', icon: '⚡', name: 'Rayo', cost: 10 },
+                    { id: '408', css: 'sticker-star', icon: '🎯', name: 'Diana', cost: 10 },
+                    { id: '409', css: 'sticker-star', icon: '🚀', name: 'Cohete', cost: 14 },
+                    { id: '410', css: 'sticker-star', icon: '🔮', name: 'Cristal', cost: 14 },
+                    { id: '411', css: 'sticker-star', icon: '🎖️', name: 'Insignia', cost: 10 },
+                    { id: '412', css: 'sticker-star', icon: '🏅', name: 'Medalla Bronce', cost: 10 },
+                    { id: '413', css: 'sticker-star', icon: '🥈', name: 'Medalla Plata', cost: 12 },
+                    { id: '414', css: 'sticker-star', icon: '🌠', name: 'Estrella Fugaz', cost: 12 },
+                    { id: '415', css: 'sticker-star', icon: '🎇', name: 'Fuegos', cost: 12 },
+                    { id: '416', css: 'sticker-star', icon: '🎆', name: 'Fuegos Artificiales', cost: 14 },
+                    { id: '417', css: 'sticker-star', icon: '✨', name: 'Destellos', cost: 10 },
+                    { id: '418', css: 'sticker-star', icon: '🪄', name: 'Varita Mágica', cost: 15 },
+                    { id: '419', css: 'sticker-star', icon: '🎟️', name: 'Ticket VIP', cost: 8 },
+                    { id: '420', css: 'sticker-star', icon: '🏷️', name: 'Etiqueta', cost: 6 },
+                    { id: '421', css: 'sticker-star', icon: '🎁', name: 'Regalo', cost: 10 },
+                    { id: '422', css: 'sticker-star', icon: '🎈', name: 'Globo', cost: 8 }
+                ]
+            },
+            {
+                category: '🍔 Snacks, Café & Dulces Extra (22 items)',
+                items: [
+                    { id: '501', css: 'sticker-star', icon: '☕', name: 'Café', cost: 8 },
+                    { id: '502', css: 'sticker-star', icon: '🧋', name: 'Boba', cost: 10 },
+                    { id: '503', css: 'sticker-star', icon: '🍎', name: 'Manzana', cost: 8 },
+                    { id: '504', css: 'sticker-star', icon: '🍕', name: 'Pizza', cost: 10 },
+                    { id: '505', css: 'sticker-star', icon: '🍩', name: 'Donita', cost: 8 },
+                    { id: '506', css: 'sticker-star', icon: '🍫', name: 'Chocolate', cost: 8 },
+                    { id: '507', css: 'sticker-star', icon: '🍉', name: 'Sandía', cost: 8 },
+                    { id: '508', css: 'sticker-star', icon: '🍓', name: 'Fresa', cost: 8 },
+                    { id: '509', css: 'sticker-star', icon: '🍪', name: 'Galleta', cost: 8 },
+                    { id: '510', css: 'sticker-star', icon: '🍿', name: 'Palomitas', cost: 10 },
+                    { id: '511', css: 'sticker-star', icon: '🍔', name: 'Hamburguesa', cost: 10 },
+                    { id: '512', css: 'sticker-star', icon: '🍟', name: 'Papas Fritas', cost: 8 },
+                    { id: '513', css: 'sticker-star', icon: '🌮', name: 'Taco', cost: 8 },
+                    { id: '514', css: 'sticker-star', icon: '🍦', name: 'Helado', cost: 8 },
+                    { id: '515', css: 'sticker-star', icon: '🎂', name: 'Pastel', cost: 10 },
+                    { id: '516', css: 'sticker-star', icon: '🍭', name: 'Paleta', cost: 8 },
+                    { id: '517', css: 'sticker-star', icon: '🍯', name: 'Miel', cost: 8 },
+                    { id: '518', css: 'sticker-star', icon: '🍵', name: 'Té', cost: 8 },
+                    { id: '519', css: 'sticker-star', icon: '🍾', name: 'Brindis', cost: 12 },
+                    { id: '520', css: 'sticker-star', icon: '🍇', name: 'Uvas', cost: 8 },
+                    { id: '521', css: 'sticker-star', icon: '🍍', name: 'Piña', cost: 8 },
+                    { id: '522', css: 'sticker-star', icon: '🥑', name: 'Aguacate', cost: 8 }
+                ]
+            },
+            {
+                category: '🌸 Naturaleza, Flores & Plantas Mágicas (20 items)',
+                items: [
+                    { id: '601', css: 'sticker-star', icon: '🌸', name: 'Flor Rosa', cost: 8 },
+                    { id: '602', css: 'sticker-star', icon: '🌻', name: 'Girasol', cost: 10 },
+                    { id: '603', css: 'sticker-star', icon: '🌷', name: 'Tulipán', cost: 8 },
+                    { id: '604', css: 'sticker-star', icon: '🍀', name: 'Trébol', cost: 10 },
+                    { id: '605', css: 'sticker-star', icon: '🌵', name: 'Cactus', cost: 8 },
+                    { id: '606', css: 'sticker-star', icon: '🍄', name: 'Hongo', cost: 8 },
+                    { id: '607', css: 'sticker-star', icon: '🌙', name: 'Luna', cost: 10 },
+                    { id: '608', css: 'sticker-star', icon: '☀️', name: 'Sol', cost: 10 },
+                    { id: '609', css: 'sticker-star', icon: '🌈', name: 'Arcoíris', cost: 12 },
+                    { id: '610', css: 'sticker-star', icon: '🌍', name: 'Planeta', cost: 12 },
+                    { id: '611', css: 'sticker-star', icon: '🌲', name: 'Árbol', cost: 8 },
+                    { id: '612', css: 'sticker-star', icon: '🌴', name: 'Palmera', cost: 8 },
+                    { id: '613', css: 'sticker-star', icon: '🌺', name: 'Hibis', cost: 8 },
+                    { id: '614', css: 'sticker-star', icon: '🌹', name: 'Rosa Roja', cost: 10 },
+                    { id: '615', css: 'sticker-star', icon: '🌿', name: 'Hoja', cost: 8 },
+                    { id: '616', css: 'sticker-star', icon: '🍁', name: 'Hoja Otoño', cost: 8 },
+                    { id: '617', css: 'sticker-star', icon: '❄️', name: 'Copo Nieve', cost: 10 },
+                    { id: '618', css: 'sticker-star', icon: '🌊', name: 'Ola', cost: 10 },
+                    { id: '619', css: 'sticker-star', icon: '🌋', name: 'Volcán', cost: 12 },
+                    { id: '620', css: 'sticker-star', icon: '⭐', name: 'Estrellita', cost: 8 }
+                ]
+            }
+        ];
+
+        function getAllStickers() {
+            let all = [];
+            stickerCategories.forEach(cat => all.push(...cat.items));
+            return all;
+        }
+
+        function updateHeader() {
+            document.getElementById('user-coins').innerText = userCoins;
+            document.getElementById('user-streak').innerText = userStreak;
+            localStorage.setItem('nextup_coins', userCoins);
+            localStorage.setItem('nextup_streak', userStreak);
+            localStorage.setItem('nextup_blocks', JSON.stringify(blocks));
+            localStorage.setItem('nextup_unlocked', JSON.stringify(unlockedStickers));
+            updateAccountCode();
+        }
+
+        function setTheme(themeName) {
+            currentTheme = themeName;
+            document.body.className = themeName;
+            localStorage.setItem('nextup_theme', themeName);
+        }
+
+        function updateAccountCode() {
+            let accountData = { coins: userCoins, streak: userStreak, blocks: blocks, unlocked: unlockedStickers, notes: localStorage.getItem('nextup_notes') || '', theme: currentTheme };
+            let encodedCode = btoa(encodeURIComponent(JSON.stringify(accountData)));
+            document.getElementById('account-code-box').value = encodedCode;
+        }
+
+        function copyAccountCode() {
+            let box = document.getElementById('account-code-box');
+            box.select();
+            document.execCommand('copy');
+            alert("📋 ¡Código de cuenta copiado al portapapeles!");
+        }
+
+        function importAccountCode() {
+            let code = prompt("Pega aquí tu código único de cuenta:");
+            if(!code) return;
+            try {
+                let decodedData = JSON.parse(decodeURIComponent(atob(code.trim())));
+                userCoins = decodedData.coins || 15;
+                userStreak = decodedData.streak || 1;
+                blocks = decodedData.blocks || [];
+                unlockedStickers = decodedData.unlocked || ['101', '001', '301'];
+                if(decodedData.notes) localStorage.setItem('nextup_notes', decodedData.notes);
+                if(decodedData.theme) setTheme(decodedData.theme);
+                updateHeader();
+                renderMainView();
+                alert("🎉 ¡Cuenta restaurada con éxito!");
+            } catch(e) { alert("❌ Código no válido."); }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            if(tabId === 'board') {
+                if(activeBlockId) renderDetailView(activeBlockId);
+                else renderMainView();
+            }
+            if(tabId === 'shop') renderShop();
+            if(tabId === 'whiteboard') {
+                setTimeout(resizeCanvas, 50);
+                renderSavedSheets();
+            }
+        }
+
+        function addStudyBlock() {
+            let nameInput = document.getElementById('new-block-name');
+            let name = nameInput.value.trim();
+            if(!name) { alert("⚠️ Escribe el nombre del bloque."); return; }
+            blocks.push({ id: Date.now(), name: name, sticker: 'sticker-dog', stickerId: '301', tasks: [] });
+            nameInput.value = "";
+            updateHeader();
+            renderMainView();
+        }
+
+        function deleteBlock(blockId) {
+            if(confirm("¿Eliminar este bloque completo?")) {
+                blocks = blocks.filter(b => b.id !== blockId);
+                activeBlockId = null;
+                updateHeader();
+                renderMainView();
+            }
+        }
+
+        function moveBlock(index, direction) {
+            let newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= blocks.length) return;
+            let temp = blocks[index];
+            blocks[index] = blocks[newIndex];
+            blocks[newIndex] = temp;
+            updateHeader();
+            renderMainView();
+        }
+
+        function openBlock(blockId) { activeBlockId = blockId; renderDetailView(blockId); }
+        function closeBlockView() { activeBlockId = null; renderMainView(); }
+
+        function addTaskToBlock(blockId) {
+            let title = prompt("Título de la tarea o tema:");
+            if(!title) return;
+            let block = blocks.find(b => b.id === blockId);
+            if(block) { block.tasks.push({ id: Date.now(), title: title, status: 'todo' }); updateHeader(); renderDetailView(blockId); }
+        }
+
+        function changeTaskStatus(blockId, taskId, newStatus) {
+            let block = blocks.find(b => b.id === blockId);
+            if(block) {
+                let task = block.tasks.find(t => t.id === taskId);
+                if(task) {
+                    if(newStatus === 'done' && task.status !== 'done') { userCoins += 5; alert("🎉 ¡Tarea dominada! +5 Monedas 🪙"); }
+                    task.status = newStatus;
+                    updateHeader();
+                    renderDetailView(blockId);
+                }
+            }
+        }
+
+        function deleteTask(blockId, taskId) {
+            let block = blocks.find(b => b.id === blockId);
+            if(block) { block.tasks = block.tasks.filter(t => t.id !== taskId); updateHeader(); renderDetailView(blockId); }
+        }
+
+        function changeBlockSticker(blockId) {
+            let block = blocks.find(b => b.id === blockId);
+            if(!block) return;
+            let availableList = unlockedStickers.map(id => {
+                let s = getAllStickers().find(item => item.id === id);
+                return s ? `ID [${s.id}] - ${s.name} ${s.icon}` : '';
+            }).join('\n');
+            let choice = prompt(`Escribe el número ID de 3 dígitos:\n${availableList}`);
+            if(choice && unlockedStickers.includes(choice)) {
+                let foundSticker = getAllStickers().find(s => s.id === choice);
+                if(foundSticker) { block.stickerId = foundSticker.id; block.sticker = foundSticker.css; updateHeader(); renderMainView(); if(activeBlockId) renderDetailView(activeBlockId); }
+            } else if(choice) { alert("⚠️ ID no válido o no desbloqueado."); }
+        }
+
+        function renderMainView() {
+            document.getElementById('main-view').style.display = 'block';
+            document.getElementById('detail-view').style.display = 'none';
+            let grid = document.getElementById('blocks-grid-container');
+            grid.innerHTML = "";
+            if(blocks.length === 0) { grid.innerHTML = `<p style="color: var(--text-muted); grid-column: 1/-1; text-align:center;">No hay bloques creados aún.</p>`; return; }
+            blocks.forEach((b, index) => {
+                let stickerObj = getAllStickers().find(s => s.id === b.stickerId) || getAllStickers()[0];
+                let totalTasks = b.tasks.length;
+                let doneTasks = b.tasks.filter(t => t.status === 'done').length;
+                let deleteBtnHtml = b.isGuide ? `<button class="action-btn" style="background:var(--error); font-size:0.75rem;" onclick="deleteBlock(${b.id})">🗑️ Borrar Guía</button>` : `<button class="action-btn" style="background:#374151; font-size:0.75rem;" onclick="changeBlockSticker(${b.id})">🎨 Sticker (ID)</button>`;
+                grid.innerHTML += `
+                    <div class="subject-card" style="${b.isGuide ? 'border: 2px dashed var(--accent);' : ''}">
+                        <div class="subject-header">
+                            <div class="subject-title-area" onclick="openBlock(${b.id})">
+                                <span class="${stickerObj.css}">${stickerObj.icon}</span>
+                                <span class="subject-title">${b.name}</span>
+                            </div>
+                            <div class="priority-controls">
+                                <button class="action-btn" onclick="moveBlock(${index}, -1)">⬆️</button>
+                                <button class="action-btn" onclick="moveBlock(${index}, 1)">⬇️</button>
+                            </div>
+                        </div>
+                        <div class="subject-info" onclick="openBlock(${b.id})" style="cursor:pointer;">${b.isGuide ? '✨ Tarjeta interactiva' : `📝 Tareas: ${doneTasks} / ${totalTasks} completadas`}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                            <span style="font-size: 0.75rem; color: var(--primary); font-weight: bold; cursor:pointer;" onclick="openBlock(${b.id})">Abrir Bloque ➡️</span>
+                            ${deleteBtnHtml}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderDetailView(blockId) {
+            let block = blocks.find(b => b.id === blockId);
+            if(!block) { closeBlockView(); return; }
+            document.getElementById('main-view').style.display = 'none';
+            let detail = document.getElementById('detail-view');
+            detail.style.display = 'block';
+            let stickerObj = getAllStickers().find(s => s.id === block.stickerId) || getAllStickers()[0];
+            let todoTasks = block.tasks.filter(t => t.status === 'todo');
+            let progTasks = block.tasks.filter(t => t.status === 'progress');
+            let doneTasks = block.tasks.filter(t => t.status === 'done');
+            detail.innerHTML = `
+                <div class="block-detail-view">
+                    <button class="btn back-btn" onclick="closeBlockView()">⬅️ Volver a mis Bloques</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="${stickerObj.css}" style="cursor:pointer;" onclick="changeBlockSticker(${block.id})">${stickerObj.icon}</span>
+                            <h2 style="margin:0; border:none;">${block.name}</h2>
+                        </div>
+                        <div>
+                            <button class="btn" style="padding:6px 12px; font-size:0.85rem;" onclick="addTaskToBlock(${block.id})">➕ Añadir Tarea</button>
+                            <button class="btn" style="padding:6px 12px; font-size:0.85rem; background:var(--error);" onclick="deleteBlock(${block.id})">🗑️ Eliminar</button>
+                        </div>
+                    </div>
+                    <div class="kanban-subgrid">
+                        <div class="kanban-col"><h4>📌 Por Hacer (${todoTasks.length})</h4><div class="task-list">${todoTasks.map(t => renderTaskCard(block.id, t)).join('')}</div></div>
+                        <div class="kanban-col"><h4>⏳ En Proceso (${progTasks.length})</h4><div class="task-list">${progTasks.map(t => renderTaskCard(block.id, t)).join('')}</div></div>
+                        <div class="kanban-col"><h4>🎉 Dominado (${doneTasks.length})</h4><div class="task-list">${doneTasks.map(t => renderTaskCard(block.id, t)).join('')}</div></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTaskCard(blockId, task) {
+            return `
+                <div class="task-card">
+                    <div>${task.title}</div>
+                    <div class="task-footer">
+                        <span>ID: ${task.id.toString().slice(-4)}</span>
+                        <div class="task-actions">
+                            ${task.status !== 'todo' ? `<button class="action-btn" onclick="changeTaskStatus(${blockId}, ${task.id}, 'todo')">⬅️</button>` : ''}
+                            ${task.status !== 'progress' ? `<button class="action-btn" onclick="changeTaskStatus(${blockId}, ${task.id}, 'progress')">⏳</button>` : ''}
+                            ${task.status !== 'done' ? `<button class="action-btn" onclick="changeTaskStatus(${blockId}, ${task.id}, 'done')">✔️</button>` : ''}
+                            <button class="action-btn" style="background:#ef4444;" onclick="deleteTask(${blockId}, ${task.id})">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderShop() {
+            let container = document.getElementById('shop-categories-container');
+            container.innerHTML = "";
+            stickerCategories.forEach(cat => {
+                let html = `<div class="category-title">${cat.category}</div><div class="shop-grid">`;
+                cat.items.forEach(s => {
+                    let isOwned = unlockedStickers.includes(s.id);
+                    html += `
+                        <div class="shop-item">
+                            <div class="${s.css}" style="font-size:1.7rem; margin-bottom:3px;">${s.icon}</div>
+                            <div style="font-weight:bold; font-size:0.75rem;">[${s.id}] ${s.name}</div>
+                            <div style="color:var(--gold); font-size:0.7rem; margin:2px 0 5px;">${s.cost} 🪙</div>
+                            ${isOwned ? '<span style="color:var(--success); font-weight:bold; font-size:0.7rem;">Adquirido ✔️</span>' : `<button class="btn" style="padding:2px 5px; font-size:0.6rem;" onclick="buySticker('${s.id}', ${s.cost})">Comprar</button>`}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function buySticker(stickerId, cost) {
+            if(userCoins >= cost) {
+                userCoins -= cost;
+                unlockedStickers.push(stickerId);
+                updateHeader();
+                renderShop();
+                alert(`🎁 ¡Sticker con ID [${stickerId}] adquirido!`);
+            } else { alert("❌ Monedas insuficientes."); }
+        }
+
+        document.getElementById('quick-notes').value = localStorage.getItem('nextup_notes') || '';
+        function saveNotes() {
+            localStorage.setItem('nextup_notes', document.getElementById('quick-notes').value);
+            updateAccountCode();
+        }
+
+        // --- MOTOR DE LA PIZARRA PRO ---
+        const canvas = document.getElementById('drawing-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        let painting = false;
+        let currentTool = 'pencil';
+        let startX = 0, startY = 0;
+        let snapshot = null;
+        let actionHistory = [];
+        let redoStack = [];
+
+        function saveStateToHistory() {
+            try {
+                actionHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+                if(actionHistory.length > 35) actionHistory.shift();
+                redoStack = [];
+            } catch(e) {}
+        }
+
+        function undoLastAction() {
+            if (actionHistory.length > 0) {
+                redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+                let previousState = actionHistory.pop();
+                ctx.putImageData(previousState, 0, 0);
+            } else {
+                alert("⚠️ No hay más acciones para deshacer.");
+            }
+        }
+
+        function redoLastAction() {
+            if (redoStack.length > 0) {
+                actionHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+                let nextState = redoStack.pop();
+                ctx.putImageData(nextState, 0, 0);
+            } else {
+                alert("⚠️ No hay acciones para rehacer.");
+            }
+        }
+
+        function resizeCanvas() {
+            let wrapper = document.getElementById('canvas-area');
+            if (!wrapper) return;
+            let targetWidth = wrapper.clientWidth > 0 ? wrapper.clientWidth : 1000;
+            let targetHeight = 1200;
+
+            if (canvas.width === 0 || canvas.width !== targetWidth) {
+                let tempCanvas = document.createElement('canvas');
+                let tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = canvas.width || targetWidth;
+                tempCanvas.height = canvas.height || targetHeight;
+                if (canvas.width > 0) tempCtx.drawImage(canvas, 0, 0);
+
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                canvas.style.width = targetWidth + 'px';
+                canvas.style.height = targetHeight + 'px';
+
+                ctx.drawImage(tempCanvas, 0, 0);
+                redrawSheetBackground();
+                if (actionHistory.length === 0) saveStateToHistory();
+            }
+        }
+
+        function changeSheetBackground() {
+            let sheetBg = document.getElementById('sheet-bg-color').value;
+            document.getElementById('canvas-area').style.backgroundColor = sheetBg;
+            redrawSheetBackground();
+            saveStateToHistory();
+        }
+
+        function changeSheetPattern() {
+            redrawSheetBackground();
+            saveStateToHistory();
+        }
+
+        function redrawSheetBackground() {
+            let w = canvas.width;
+            let h = canvas.height;
+            let pattern = document.getElementById('sheet-pattern').value;
+
+            let currentDrawing = ctx.getImageData(0, 0, w, h);
+            ctx.clearRect(0, 0, w, h);
+
+            if (pattern === 'grid') {
+                ctx.strokeStyle = 'rgba(2, 132, 199, 0.15)';
+                ctx.lineWidth = 1;
+                let step = 35;
+                for (let x = 0; x < w; x += step) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+                }
+                for (let y = 0; y < h; y += step) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+                }
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.35)';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(50, 0); ctx.lineTo(50, h); ctx.stroke();
+            } else if (pattern === 'lines') {
+                ctx.strokeStyle = 'rgba(2, 132, 199, 0.18)';
+                ctx.lineWidth = 1;
+                let step = 40;
+                for (let y = step; y < h; y += step) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+                }
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.35)';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(50, 0); ctx.lineTo(50, h); ctx.stroke();
+            }
+
+            ctx.putImageData(currentDrawing, 0, 0);
+        }
+
+        function setWbTool(tool) {
+            if (tool === 'shape') {
+                currentTool = document.getElementById('shape-selector').value;
+            } else {
+                currentTool = tool;
+                if(!['pencil','pen','marker','highlighter','eraser','text'].includes(tool)) {
+                    document.getElementById('shape-selector').value = tool;
+                }
+            }
+            document.querySelectorAll('.wb-btn').forEach(btn => btn.classList.remove('active'));
+            if(tool === 'text') document.getElementById('tool-text').classList.add('active');
+            else if(['pencil','pen','marker','highlighter','eraser'].includes(tool)) {
+                document.getElementById('tool-' + tool).classList.add('active');
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.movable-textbox')) {
+                document.querySelectorAll('.movable-textbox').forEach(box => box.classList.remove('active-box'));
+            }
+            if (!e.target.closest('.canvas-sticker-item')) {
+                document.querySelectorAll('.canvas-sticker-item').forEach(st => st.classList.remove('active-sticker'));
+            }
+        });
+
+        function startPosition(e) {
+            if(e.target.closest('.movable-textbox') || e.target.closest('.ruler-tool')) return;
+            e.preventDefault();
+
+            let rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            startX = clientX - rect.left;
+            startY = clientY - rect.top;
+
+            if (currentTool === 'text') {
+                let userText = prompt("Escribe el texto de tu cuadro sinóptico:");
+                if (userText) {
+                    let color = document.getElementById('wb-color').value;
+                    let bgColor = document.getElementById('wb-bg-color').value;
+                    createMovableTextbox(userText, startX, startY, color, bgColor, color, false);
+                }
+                return;
+            }
+
+            painting = true;
+            try {
+                snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            } catch(err) {}
+
+            if (!['rect', 'circle', 'line', 'arrow'].includes(currentTool)) {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+            }
+        }
+
+        function endPosition(e) {
+            if (!painting) return;
+            let rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+            let clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+            let endX = clientX - rect.left;
+            let endY = clientY - rect.top;
+
+            let color = document.getElementById('wb-color').value;
+            let bgColor = document.getElementById('wb-bg-color').value;
+            let lineWidth = parseInt(document.getElementById('stroke-width').value);
+            let fillShape = document.getElementById('fill-shape')?.checked || false;
+
+            if (['rect', 'circle', 'line', 'arrow'].includes(currentTool)) {
+                saveStateToHistory();
+                if (snapshot) ctx.putImageData(snapshot, 0, 0);
+                ctx.strokeStyle = color;
+                ctx.fillStyle = bgColor;
+                ctx.lineWidth = lineWidth;
+
+                if (currentTool === 'rect') {
+                    if (fillShape) ctx.fillRect(startX, startY, endX - startX, endY - startY);
+                    ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+                } else if (currentTool === 'circle') {
+                    let radiusX = Math.abs(endX - startX) / 2;
+                    let radiusY = Math.abs(endY - startY) / 2;
+                    let centerX = startX + (endX - startX) / 2;
+                    let centerY = startY + (endY - startY) / 2;
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                    if (fillShape) ctx.fill();
+                    ctx.stroke();
+                } else if (currentTool === 'line') {
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                } else if (currentTool === 'arrow') {
+                    drawArrow(startX, startY, endX, endY, color, lineWidth);
+                }
+            } else {
+                saveStateToHistory();
+            }
+
+            painting = false;
+            ctx.beginPath();
+        }
+
+        function draw(e) {
+            if (!painting) return;
+            e.preventDefault();
+            let rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            let x = clientX - rect.left;
+            let y = clientY - rect.top;
+
+            let color = document.getElementById('wb-color').value;
+            let lineWidth = parseInt(document.getElementById('stroke-width').value);
+
+            if (['rect', 'circle', 'line', 'arrow'].includes(currentTool)) {
+                if (snapshot) ctx.putImageData(snapshot, 0, 0);
+                ctx.strokeStyle = color;
+                ctx.fillStyle = document.getElementById('wb-bg-color').value;
+                ctx.lineWidth = lineWidth;
+                let fillShape = document.getElementById('fill-shape')?.checked || false;
+
+                if (currentTool === 'rect') {
+                    if (fillShape) ctx.fillRect(startX, startY, x - startX, y - startY);
+                    ctx.strokeRect(startX, startY, x - startX, y - startY);
+                } else if (currentTool === 'circle') {
+                    let rx = Math.abs(x - startX) / 2;
+                    let ry = Math.abs(y - startY) / 2;
+                    let cx = startX + (x - startX) / 2;
+                    let cy = startY + (y - startY) / 2;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+                    if (fillShape) ctx.fill();
+                    ctx.stroke();
+                } else if (currentTool === 'line') {
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                } else if (currentTool === 'arrow') {
+                    drawArrow(startX, startY, x, y, color, lineWidth);
+                }
+                return;
+            }
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (currentTool === 'pencil') {
+                ctx.strokeStyle = '#1f2937';
+                ctx.lineWidth = lineWidth;
+                ctx.globalAlpha = 1.0;
+            } else if (currentTool === 'pen') {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = lineWidth + 2;
+                ctx.globalAlpha = 1.0;
+            } else if (currentTool === 'marker') {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = lineWidth * 4;
+                ctx.globalAlpha = 1.0;
+            } else if (currentTool === 'highlighter') {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = lineWidth * 8;
+                ctx.globalAlpha = 0.3;
+            } else if (currentTool === 'eraser') {
+                ctx.strokeStyle = document.getElementById('sheet-bg-color').value;
+                ctx.lineWidth = lineWidth * 12;
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function drawArrow(fromX, fromY, toX, toY, color, width) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            let angle = Math.atan2(toY - fromY, toX - fromX);
+            let headLen = 15 * (width / 4);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI / 6), toY - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headLen * Math.cos(angle + Math.PI / 6), toY - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.lineTo(toX, toY);
+            ctx.fill();
+        }
+
+        // CREAR CAJA DE TEXTO CON COLORES 100% SEPARADOS (FONDO, BORDE Y LETRA)
+        function addTitleTextbox() {
+            createMovableTextbox("✨ Títulos", 100, 100, "#0284c7", "transparent", "#0284c7", true);
+        }
+
+        function createMovableTextbox(text, posX, posY, textColor, bgColor, borderColor, isTitle = false) {
+            let area = document.getElementById('canvas-area');
+            let box = document.createElement('div');
+            box.className = 'movable-textbox';
+            box.style.left = posX + 'px';
+            box.style.top = posY + 'px';
+            box.style.backgroundColor = isTitle ? 'transparent' : bgColor;
+            box.style.color = textColor;
+            box.style.border = isTitle ? 'none' : `2px solid ${borderColor}`;
+            box.style.fontSize = isTitle ? '26px' : '16px';
+            box.style.fontWeight = isTitle ? 'bold' : 'normal';
+
+            box.innerHTML = `
+                <div class="tb-drag-handle" title="Arrastra aquí para mover">
+                    <span>⋮⋮ Mover</span>
+                    <button onclick="this.closest('.movable-textbox').remove()" style="background:transparent; color:inherit; font-size:0.7rem; border:none; cursor:pointer;" title="Eliminar">❌</button>
+                </div>
+                <div class="tb-body-area">
+                    <div class="tb-content" contenteditable="true">${text}</div>
+                    <div class="tb-footer">
+                        <select onchange="this.closest('.movable-textbox').style.fontSize = this.value" title="Tamaño de Letra">
+                            <option value="14px">Pequeña</option>
+                            <option value="16px" selected>Normal</option>
+                            <option value="20px">Grande</option>
+                            <option value="26px">Muy Grande</option>
+                            <option value="34px">Título Uff</option>
+                        </select>
+                        <button onclick="let b=this.closest('.movable-textbox'); b.style.fontWeight = b.style.fontWeight === 'bold' ? 'normal' : 'bold';" title="Negrita"><b>B</b></button>
+                        
+                        <label title="Color Fondo" style="font-size:0.65rem; display:flex; align-items:center; gap:2px; cursor:pointer;">
+                            F:<input type="color" value="${isTitle ? '#ffffff' : bgColor}" onchange="this.closest('.movable-textbox').style.backgroundColor = this.value" style="width:16px; height:16px; border:none; background:transparent; cursor:pointer;">
+                        </label>
+                        <label title="Color Borde" style="font-size:0.65rem; display:flex; align-items:center; gap:2px; cursor:pointer;">
+                            B:<input type="color" value="${borderColor}" onchange="let b=this.closest('.movable-textbox'); if(!b.style.border.includes('none')) b.style.borderColor = this.value;" style="width:16px; height:16px; border:none; background:transparent; cursor:pointer;">
+                        </label>
+                        <label title="Color Letra" style="font-size:0.65rem; display:flex; align-items:center; gap:2px; cursor:pointer;">
+                            L:<input type="color" value="${textColor}" onchange="this.closest('.movable-textbox').style.color = this.value" style="width:16px; height:16px; border:none; background:transparent; cursor:pointer;">
+                        </label>
+                    </div>
+                </div>
+            `;
+
+            box.addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.querySelectorAll('.movable-textbox').forEach(b => b.classList.remove('active-box'));
+                box.classList.add('active-box');
+            });
+
+            let handle = box.querySelector('.tb-drag-handle');
+            let isDragging = false, startX, startY;
+            handle.onmousedown = function(e) {
+                isDragging = true;
+                startX = e.clientX - box.offsetLeft;
+                startY = e.clientY - box.offsetTop;
+                e.stopPropagation();
+            };
+            document.onmousemove = function(e) {
+                if (!isDragging) return;
+                box.style.left = (e.clientX - startX) + 'px';
+                box.style.top = (e.clientY - startY) + 'px';
+            };
+            document.onmouseup = function() { isDragging = false; };
+
+            area.appendChild(box);
+            box.click();
+        }
+
+        // AÑADIR REGLA FLOTANTE
+        function addRuler() {
+            let area = document.getElementById('canvas-area');
+            let ruler = document.createElement('div');
+            ruler.className = 'ruler-tool';
+            ruler.style.left = '100px';
+            ruler.style.top = '100px';
+            ruler.innerHTML = `<span>📐 Regla (Trazar por encima)</span> <button onclick="this.closest('.ruler-tool').remove()" style="background:transparent; border:none; color:inherit; cursor:pointer; font-weight:bold;">×</button>`;
+            
+            let isDragging = false, startX, startY;
+            ruler.onmousedown = function(e) {
+                isDragging = true;
+                startX = e.clientX - ruler.offsetLeft;
+                startY = e.clientY - ruler.offsetTop;
+                e.stopPropagation();
+            };
+            document.onmousemove = function(e) {
+                if (!isDragging) return;
+                ruler.style.left = (e.clientX - startX) + 'px';
+                ruler.style.top = (e.clientY - startY) + 'px';
+            };
+            document.onmouseup = function() { isDragging = false; };
+            area.appendChild(ruler);
+        }
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('touchstart', startPosition, { passive: false });
+        canvas.addEventListener('touchend', endPosition);
+        canvas.addEventListener('touchmove', draw, { passive: false });
+
+        function clearCanvas() {
+            if(confirm("¿Limpiar toda la pizarra, cuadros y regla?")) {
+                saveStateToHistory();
+                redrawSheetBackground();
+                document.querySelectorAll('.movable-textbox').forEach(el => el.remove());
+                document.querySelectorAll('.canvas-sticker-item').forEach(el => el.remove());
+                document.querySelectorAll('.ruler-tool').forEach(el => el.remove());
+            }
+        }
+
+        // --- GUARDADO RÁPIDO CON HTML2CANVAS ---
+        function saveSheetToGallery() {
+            let area = document.getElementById('canvas-area');
+            
+            document.querySelectorAll('.movable-textbox').forEach(box => box.classList.remove('active-box'));
+            document.querySelectorAll('.canvas-sticker-item').forEach(st => st.classList.remove('active-sticker'));
+
+            html2canvas(area, {
+                scale: 1.5,
+                useCORS: true,
+                logging: false,
+                backgroundColor: document.getElementById('sheet-bg-color').value
+            }).then(canvasResult => {
+                let dataURL = canvasResult.toDataURL("image/png");
+                let sheetObj = {
+                    id: Date.now(),
+                    date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    image: dataURL
+                };
+                savedSheets.unshift(sheetObj);
+                localStorage.setItem('nextup_sheets', JSON.stringify(savedSheets));
+                renderSavedSheets();
+                alert("💾 ¡Esquema de cuaderno guardado al instante con éxito!");
+            }).catch(err => {
+                alert("⚠️ Error al generar la imagen.");
+            });
+        }
+
+        function renderSavedSheets() {
+            let container = document.getElementById('saved-sheets-container');
+            if (savedSheets.length === 0) {
+                container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;" id="no-sheets-msg">No hay hojas guardadas todavía.</p>`;
+                return;
+            }
+            container.innerHTML = "";
+            savedSheets.forEach(sheet => {
+                container.innerHTML += `
+                    <div class="sheet-card">
+                        <img src="${sheet.image}" alt="Esquema guardado">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">📅 ${sheet.date}</div>
+                        <div style="display: flex; gap: 5px; justify-content: center;">
+                            <a href="${sheet.image}" download="esquema-nextup-${sheet.id}.png" class="wb-btn" style="background: var(--primary); color: white; text-decoration: none; padding: 4px 8px; font-size: 0.75rem;">📥 Descargar PNG</a>
+                            <button class="wb-btn" style="background: var(--error); color: white; padding: 4px 6px; font-size: 0.75rem;" onclick="deleteSheet(${sheet.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function deleteSheet(id) {
+            if(confirm("¿Eliminar esta hoja?")) {
+                savedSheets = savedSheets.filter(s => s.id !== id);
+                localStorage.setItem('nextup_sheets', JSON.stringify(savedSheets));
+                renderSavedSheets();
+            }
+        }
+
+        function addStickerToBoard() {
+            let availableList = unlockedStickers.map(id => {
+                let s = getAllStickers().find(item => item.id === id);
+                return s ? `ID [${s.id}] - ${s.name} ${s.icon}` : '';
+            }).join('\n');
+            let choice = prompt(`Elige el ID de tu sticker:\n${availableList}`);
+            if(choice && unlockedStickers.includes(choice)) {
+                let foundSticker = getAllStickers().find(s => s.id === choice);
+                if(foundSticker) createDraggableSticker(foundSticker.icon, foundSticker.css);
+            } else if(choice) { alert("⚠️ ID no válido."); }
+        }
+
+        function createDraggableSticker(icon, cssClass, posX = 50, posY = 50, size = 2.5) {
+            let area = document.getElementById('canvas-area');
+            let item = document.createElement('div');
+            item.className = `canvas-sticker-item ${cssClass}`;
+            item.style.left = posX + 'px';
+            item.style.top = posY + 'px';
+            item.style.fontSize = size + 'rem';
+            item.innerHTML = `
+                <div class="sticker-controls-bar">
+                    <button onclick="resizeSticker(this, 0.5)" style="cursor:pointer; background:none; border:none; color:#fff;" title="Agrandar">➕</button>
+                    <button onclick="resizeSticker(this, -0.5)" style="cursor:pointer; background:none; border:none; color:#fff;" title="Achicar">➖</button>
+                    <button onclick="this.closest('.canvas-sticker-item').remove()" style="cursor:pointer; background:none; border:none; color:#ff4444;" title="Eliminar">❌</button>
+                </div>
+                <div class="sticker-content" style="cursor: move;">${icon}</div>
+            `;
+
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.querySelectorAll('.canvas-sticker-item').forEach(st => st.classList.remove('active-sticker'));
+                item.classList.add('active-sticker');
+            });
+
+            let isDragging = false, startX, startY;
+            item.onmousedown = function(e) {
+                if(e.target.tagName === 'BUTTON') return;
+                isDragging = true;
+                startX = e.clientX - item.offsetLeft;
+                startY = e.clientY - item.offsetTop;
+                e.stopPropagation();
+            };
+            document.onmousemove = function(e) {
+                if (!isDragging) return;
+                item.style.left = (e.clientX - startX) + 'px';
+                item.style.top = (e.clientY - startY) + 'px';
+            };
+            document.onmouseup = function() { isDragging = false; };
+            area.appendChild(item);
+            item.click();
+        }
+
+        function resizeSticker(btn, delta) {
+            let stickerWrapper = btn.closest('.canvas-sticker-item');
+            let currentSize = parseFloat(window.getComputedStyle(stickerWrapper).fontSize);
+            let newSize = (currentSize / 16) + delta;
+            if(newSize >= 1.5 && newSize <= 6) stickerWrapper.style.fontSize = newSize + 'rem';
+        }
+
+        const postItColors = [
+            { name: 'Amarillo', bg: '#fef08a', text: '#713f12' },
+            { name: 'Azul', bg: '#bae6fd', text: '#0369a1' },
+            { name: 'Rojo', bg: '#fecaca', text: '#991b1b' },
+            { name: 'Negro', bg: '#1f2937', text: '#f3f4f6' },
+            { name: 'Blanco', bg: '#ffffff', text: '#111827' }
+        ];
+
+        let postIts = JSON.parse(localStorage.getItem('nextup_postits')) || [{ id: 1, text: '¡Recordar examen de Anatomía!', colorIdx: 0 }];
+
+        function renderPostIts() {
+            let container = document.getElementById('postits-container');
+            container.innerHTML = "";
+            postIts.forEach(p => {
+                let theme = postItColors[p.colorIdx] || postItColors[0];
+                container.innerHTML += `
+                    <div class="postit-card" style="background-color: ${theme.bg}; color: ${theme.text};">
+                        <div class="postit-header">
+                            <select onchange="changePostItColor(${p.id}, this.value)" style="background: rgba(0,0,0,0.08); color: ${theme.text}; border: none; padding: 2px 4px; border-radius: 4px; font-size: 0.75rem;">
+                                ${postItColors.map((c, idx) => `<option value="${idx}" ${idx === p.colorIdx ? 'selected' : ''}>${c.name}</option>`).join('')}
+                            </select>
+                            <button onclick="deletePostIt(${p.id})" style="background: transparent; border: none; color: ${theme.text}; cursor:pointer; font-weight:bold;">×</button>
+                        </div>
+                        <textarea class="postit-textarea" style="color: ${theme.text};" oninput="updatePostItText(${p.id}, this.value)">${p.text}</textarea>
+                    </div>
+                `;
+            });
+            localStorage.setItem('nextup_postits', JSON.stringify(postIts));
+            updateAccountCode();
+        }
+
+        function addPostIt() {
+            postIts.push({ id: Date.now(), text: 'Nueva nota rápida...', colorIdx: Math.floor(Math.random() * postItColors.length) });
+            renderPostIts();
+        }
+
+        function updatePostItText(id, newText) {
+            let item = postIts.find(p => p.id === id);
+            if(item) { item.text = newText; localStorage.setItem('nextup_postits', JSON.stringify(postIts)); updateAccountCode(); }
+        }
+
+        function changePostItColor(id, colorIdx) {
+            let item = postIts.find(p => p.id === id);
+            if(item) { item.colorIdx = parseInt(colorIdx); renderPostIts(); }
+        }
+
+        function deletePostIt(id) {
+            postIts = postIts.filter(p => p.id !== id);
+            renderPostIts();
+        }
+
+        window.onload = function() {
+            updateHeader();
+            renderMainView();
+            renderPostIts();
+            resizeCanvas();
+            renderSavedSheets();
+        };
+
+        window.onresize = function() { resizeCanvas(); };
+    </script>
+</body>
+</html>
